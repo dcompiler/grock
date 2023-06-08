@@ -8,7 +8,7 @@ use crate::mha;
 
  pub(crate) const N_PARAMS: usize = 100; //number of learnable weights/parameters
  const N_LAYERS: usize = 2; //number of layers in decoder
- const N_HEADS: usize = 4; //number of heads in multihead attention
+pub(crate) const N_HEADS: usize = 4; //number of heads in multihead attention
 pub(crate) const D_MODEL: usize = 128; //  dimensionality of hidden state, size of vector used to represent each token in input sequence
  const D_HEAD: usize = 32; //dimensionality of each attention head, size of sub vector used within atten. head
  const BATCH_SIZE: usize = 1;
