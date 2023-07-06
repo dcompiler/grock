@@ -3,7 +3,8 @@ mod mha;
 mod fnn;
 mod utility;
 mod otherstages;
-use std::collections::VecDeque;
+mod training;
+mod optimizer;
 
 
 fn main() {
