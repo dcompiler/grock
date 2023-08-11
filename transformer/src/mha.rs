@@ -25,7 +25,7 @@ pub(crate) struct MHA{
 
 
 struct Head {
-    pub(crate) qproj: Tensor,
+    pub(crate)  qproj: Tensor,
     pub(crate) kproj: Tensor,
     pub(crate) vproj: Tensor,
 }

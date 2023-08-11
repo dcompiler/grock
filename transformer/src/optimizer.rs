@@ -95,7 +95,7 @@ impl<'a> NoamOpt<'a> {
        self.factor * (self.model_size as f64).powf(-0.5) * ((step as f64).powf(-0.5).min(self.warmup as f64).powf(-1.5))
     }
     fn backprop(&mut self, mut loss: Parameter) { //loss is final loss calculation stored as a Parameter, to implement
-        loss.backward();
+        loss.weight.grad(); //todo: check loss fct
         self.step();
     }
 }

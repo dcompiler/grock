@@ -31,7 +31,7 @@ pub(crate) struct Parameter<'a> {
     rate: f64,
     fmoment: Tensor,
     smoment: Tensor,
-    weight: &'a Tensor,
+    pub(crate) weight: &'a Tensor,
     next: Vec<&'a Parameter<'a>>,
     prev: Vec<&'a Parameter<'a>>,
 }
@@ -156,14 +156,7 @@ fn init_param<'a>(weight: &'a tch::Tensor) ->Parameter<'a>{
 }
 
 impl<'a> Parameter<'a >{
-    pub(crate) fn backward(&mut self){
-        //update weight
-        if self.prev.is_empty(){
-            for mut bw in &self.prev{ //todo: why is bw &&Parameter
-                bw.backward();
-            }
-        }
-    }
+
     pub(crate) fn update(&mut self, rate: &f64, opt: &mut NoamOpt){
         self.rate = *rate;
         let mut gradient = self.weight.grad();
@@ -208,7 +201,9 @@ impl OutputLayer{
 impl<'a> Decoder<'a>{
     pub(crate) fn forward(&self, src: Vec<f32>, src_mask: &Vec<f32>, trg: &Vec<Vec<bool>>, trg_mask: Option<&Vec<Vec<bool>>>,){
         //todo ------------------------------------------------
-        //input layer, Nx decoder layer, output layer
+        //delete this stub?
+
+
     }
 }
 fn run_decoder(mut decoder: Decoder, mut y: String) -> Tensor{
@@ -220,7 +215,6 @@ fn run_decoder(mut decoder: Decoder, mut y: String) -> Tensor{
         x = decoder.internallayers[i].forward(x);
     }
     x = decoder.outputlayer.forward(x);
-
     x
 }
 
