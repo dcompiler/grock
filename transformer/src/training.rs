@@ -88,7 +88,7 @@ fn run_epoch(data_iter: &mut dyn Iterator<Item =  Batch<f32>>, //iterate through
             start = Instant::now();
             tokens = 0;
         }
-        //optimzer::backprop
+        //todo: optimzer::backprop
     }
     total_loss / total_tokens as f32
 }

@@ -1,6 +1,8 @@
 use tch::{ Tensor};
-use crate::decoder::D_MODEL;
-use crate::utility;
+use crate::decoder::{D_MODEL, Parameter};
+use crate::{decoder, utility};
+
+pub (crate) const WARMUP: usize = 4000;
 
 
 struct LabelSmoothing {
@@ -8,7 +10,7 @@ struct LabelSmoothing {
     smoothing: f32,
     confidence: f32,
     size: usize,
-    true_dist: Option<Tensor>, //todo: true_dist
+    true_dist: Option<Tensor>, //todo: true_dist, dependent on data set
 }
 
 impl LabelSmoothing{
@@ -29,7 +31,7 @@ LabelSmoothing{
         true_dist = true_dist.scatter_(1, &target.data().unsqueeze(1), &Tensor::from(self.confidence));
         for i in 0..true_dist.size()[1]{
             if self.padding_idx.contains(&(i as i32)){
-                true_dist = true_dist.narrow(1, i as i64, true_dist.size()[1]).fill_(0 as f64);
+                true_dist = true_dist.narrow(1, i as i64, true_dist.size()[1]).fill_(0f64);
             }
         }
 
@@ -53,24 +55,24 @@ LabelSmoothing{
 }
 
 
-struct NoamOpt {
-    param_groups: Vec<Tensor>,
+pub(crate) struct NoamOpt<'a> {
+    param_groups: Vec<Parameter<'a>>,
     step: u64,
     warmup: u64,
     factor: f64,
     model_size: u64,
     rate: f64,
-    beta1: f64,
-    beta2: f64,
-    eps: f64,
+    pub(crate) beta1: f64,
+    pub(crate) beta2: f64,
+    pub(crate) eps: f64,
 }
 
-impl NoamOpt {
-    fn new(model_size: u64, factor: f64, warmup: u64, beta1: f64, beta2: f64, eps: f64) -> Self {
+impl<'a> NoamOpt<'a> {
+    fn new(model_size: u64, factor: f64, beta1: f64, beta2: f64, eps: f64) -> Self {
         Self {
             param_groups: vec![],
             step: 0,
-            warmup,
+            warmup: WARMUP as u64,
             factor,
             model_size,
             rate: 0.0,
@@ -84,7 +86,7 @@ impl NoamOpt {
         self.step += 1;
         let rate = &self.rate(self.step);
         for param in self.param_groups.iter_mut() {
-            //param.rate = rate; //todo: update rates function
+            param.update(rate, self)
         }
         self.rate = *rate;
     }
@@ -92,16 +94,16 @@ impl NoamOpt {
     fn rate(&mut self, step: u64) -> f64 {
        self.factor * (self.model_size as f64).powf(-0.5) * ((step as f64).powf(-0.5).min(self.warmup as f64).powf(-1.5))
     }
-    fn backprop(&mut self, loss: Tensor) {
+    fn backprop(&mut self, mut loss: Parameter) { //loss is final loss calculation stored as a Parameter, to implement
         loss.backward();
         self.step();
     }
 }
 
-fn get_std_opt() -> NoamOpt {
-   NoamOpt::new(D_MODEL as u64, 2.0, 4000, 0.9, 0.98, 1e-9)
+fn get_std_opt() -> NoamOpt<'static> {
+   NoamOpt::new(D_MODEL as u64, 2.0,  0.9, 0.98, 1e-9)
 }
 
-//add each weight to param_groups, as a paramater with associated t, 1st moment vector, and second moment vector (gradient??)
+//add each weight to param_groups, as a paramater with associated t, 1st moment vector, and second moment vector, gradient
 //put each paramater in param groups
 //have param groups run the optimizer on each

@@ -46,7 +46,6 @@ pub(crate) fn xavier_gen(input_dim: usize, output_dim: usize) -> Tensor{
     let mut weights = Tensor::rand(vec![input_dim as i64, output_dim as i64], (Kind::Float, Device::Cpu));
     weights = weights * Tensor::from((6.0 / (input_dim +output_dim) as f32).sqrt());
     return weights;
-    
 }
 
 pub(crate) fn kl_div_loss(input: &Tensor, target: Tensor) -> Tensor {

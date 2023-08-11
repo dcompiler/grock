@@ -13,35 +13,41 @@ pub(crate) const DROPOUT : f32 = 0.1;
 pub(crate) struct MHA{
     d_model: usize,
     d_k: usize,
-    heads: Vec<Head>,
-    oweights: Tensor,
+    pub(crate) heads: Vec<Head>,
+    pub(crate) oweights: Tensor,
     masked: bool,
+    pub(crate) qweights: Tensor,
+    pub(crate) kweights: Tensor,
+    pub(crate) vweights: Tensor,
 
 }
 
 
 
 struct Head {
-    qweights: Tensor,
-    kweights: Tensor,
-    vweights: Tensor,
+    pub(crate) qproj: Tensor,
+    pub(crate) kproj: Tensor,
+    pub(crate) vproj: Tensor,
 }
 
 pub(crate) fn init_head()->Head{
     Head {
-        qweights: utility::xavier_gen(MAX_LEN, decoder::D_MODEL),
-        kweights: utility::xavier_gen(MAX_LEN, decoder::D_MODEL),
-        vweights: utility::xavier_gen(MAX_LEN, decoder::D_MODEL),
+        qproj: utility::xavier_gen(MAX_LEN, decoder::D_MODEL).set_requires_grad(true),
+        kproj: utility::xavier_gen(MAX_LEN, decoder::D_MODEL).set_requires_grad(true),
+        vproj: utility::xavier_gen(MAX_LEN, decoder::D_MODEL).set_requires_grad(true),
     }
 }
 
-pub(crate) fn init_mha(dropout: f32, masked: bool) ->MHA{
+pub(crate) fn init_mha( masked: bool) ->MHA{
         assert_eq!(decoder::D_MODEL % decoder::N_HEADS, 0, "d_model must be divisible by n_heads");
        let mut mha = MHA{
             d_model: decoder::D_MODEL,
             d_k: (decoder::D_MODEL / decoder::N_HEADS), //Harvard uses div floor, but we assert the remainder is 0 so I don't think this is necessary
             heads: vec![],
-            oweights: utility::xavier_gen(MAX_LEN * N_HEADS, decoder::D_MODEL),
+            kweights : utility::xavier_gen(D_MODEL, D_MODEL/N_HEADS).set_requires_grad(true),
+            qweights : utility::xavier_gen(D_MODEL, D_MODEL/N_HEADS).set_requires_grad(true),
+            vweights : utility::xavier_gen(D_MODEL, D_MODEL/N_HEADS).set_requires_grad(true),
+            oweights: utility::xavier_gen(MAX_LEN * N_HEADS, decoder::D_MODEL).set_requires_grad(true),
             masked
         };
     for _ in 0..N_HEADS{
@@ -52,10 +58,10 @@ pub(crate) fn init_mha(dropout: f32, masked: bool) ->MHA{
 }
 
 impl MHA{
-    pub(crate) fn forward(&self, input: Tensor, ) -> Tensor{
+    pub(crate) fn forward(&self, input: &Tensor, ) -> Tensor{
        let mut output : Tensor = Default::default();
         for head in &self.heads{
-            output = tch::Tensor::concatenate(&[output, head.forward(&input, self.masked)], 0);
+            output = tch::Tensor::concatenate(&[output, head.forward(input,&self.qweights, &self.kweights, &self.vweights, self.masked)], 0);
         }
 
         /*
@@ -71,11 +77,11 @@ impl MHA{
 }
 
 impl Head{
-    fn forward(&self, x: &Tensor, masked: bool) ->Tensor{
+    fn forward(&self, x: &Tensor, qweights: &Tensor, kweights: &Tensor, vweights: &Tensor , masked: bool,) ->Tensor{
 
-        let query = x.dot(&self.qweights);
-        let key = x.dot(&self.kweights);
-        let value = x.dot(&self.vweights);
+        let query = x.dot(&(&self.qproj * qweights));
+        let key = x.dot(&(&self.kproj * kweights));
+        let value = x.dot(&(&self.vproj * vweights));
 
        let mut mask = Tensor::zeros(&[MAX_LEN as i64, D_MODEL as i64], (Kind::Float, Device::Cpu));
         if masked  { //15% random masking
@@ -83,35 +89,12 @@ impl Head{
             for i in 0..mask.size()[1]{
                 let n: f64  = rng.gen();
                 if n < 0.15 {
-                    mask  = mask.narrow(1, i, 1).fill_(-65536);
+                    mask  = mask.narrow(1, i, 1).fill_(-65536); //-inf essentialy, the real -inf value causes errors
                 }
             }
 
             mask = mask.unsqueeze(1);
         }
-
-        //nbatch = query.size();
-
-        //project q,k,v
-        /*
-        let (query, key, value): (Array2<f32>, Array2<f32>, Array2<f32>) =
-            [
-                query, key, value
-            ]
-                .iter()
-                .map(|( x)| {
-                    let mut linear_result = Utility::linear_transform(&x, &weights, &bias);
-                    let mut reshaped_result = Array2::zeros((nbatch, linear_result.shape()[1], self.heads, self.d_k));
-
-                    for (mut dest, src) in reshaped_result.axis_iter_mut(ndarray::Axis(1)).zip(linear_result.axis_iter(ndarray::Axis(1))) {
-                        dest.assign(&src);
-                    }
-
-                    reshaped_result.swap_axes(1, 2);
-                    reshaped_result
-                }).unzip();
-        */
-
 
         //apply attention
          attention(query, key, value, mask)

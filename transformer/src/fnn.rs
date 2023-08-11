@@ -1,5 +1,6 @@
-//feed Forward neural network implementation
+//feed forward neural network implementation
 
+use std::cell::UnsafeCell;
 use tch::{Device, Kind, Tensor};
 use crate::decoder::D_MODEL;
 use crate::mha::DROPOUT;
@@ -7,6 +8,35 @@ use crate::otherstages::MAX_LEN;
 use crate::utility;
 
 const D_FF: usize = 512; //dimensionality of feed Forward network
+
+
+ pub(crate) struct NeuralNetwork {
+     pub(crate) w1: Tensor,
+        pub(crate) w2: Tensor,
+    pub(crate) b1: Tensor,
+    pub(crate) b2: Tensor,
+}
+
+pub(crate) fn init_fnn() -> NeuralNetwork {
+    NeuralNetwork {
+        w1: utility::xavier_gen(D_MODEL, D_FF).set_requires_grad(true),
+        w2: utility::xavier_gen(D_FF, D_MODEL).set_requires_grad(true),
+        b1: Tensor::zeros(vec![D_MODEL as i64, D_FF as i64], (Kind::Float, Device::Cpu)).set_requires_grad(true),
+        b2: Tensor::zeros(vec![D_FF as i64, D_MODEL as i64], (Kind::Float, Device::Cpu)).set_requires_grad(true),
+
+    }
+}
+
+impl NeuralNetwork {
+    pub(crate) fn forward(&self, x: &Tensor) -> Tensor {
+        (x * &self.w1 + &self.b1).relu() * &self.w2 + &self.b2
+    }
+}
+
+
+/* note: OLD NN IMPLEMENTATION
+
+
 
 struct Example{
     input: Tensor,
@@ -64,9 +94,14 @@ fn init_neuron(neuron_type: NeuronType) -> Neuron{
     Neuron{
         outgoing_connections: Vec::new(),
         incoming_connections: Vec::new(),
-        output:  & mut  Tensor::zeros(vec![MAX_LEN as i64, D_MODEL as i64], (Kind::Float, Device::Cpu)),
+        output:  & mut  zero_tensor(),
         neuron_type,
     }
+}
+
+unsafe fn zero_tensor() -> UnsafeCell<Tensor> {
+      static mut tens: UnsafeCell<Tensor> = UnsafeCell::<Tensor>{  value: (Tensor::zeros(vec![MAX_LEN as i64, D_MODEL as i64], (Kind::Float, Device::Cpu))),  };
+    tens
 }
 
 pub (crate) fn init_fnn(ninputs: usize) -> FNN{ //assumes 2 hidden layers, 1 activation layer, 1 input layer, 1 output layer
@@ -222,5 +257,7 @@ impl Neuron{
 
 
 fn relu_prime(x:f32 )-> f32 { if x>0.0 {1.0} else {0.0} }
+
+ */
 
 

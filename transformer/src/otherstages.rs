@@ -12,6 +12,7 @@ use crate::mha::DROPOUT;
 
 
 pub(crate) struct Embedder {
+    pub(crate) weight: Tensor,
 }
 
 
@@ -19,6 +20,7 @@ impl Embedder{
     pub(crate) fn forward(&mut self, input: std::string::String) -> Tensor{
         let mut output= Tensor::zeros(vec![MAX_LEN as i64, decoder::D_MODEL as i64], (Kind::Float, Device::Cpu));
         for token in input.split_whitespace(){
+            output = (gen_array(mod97_match(token))); //todo: append properly
             match token {
                 /*
                 "0" => output.push(gen_array(0)),// todo: create match fn, store values in dict. for better generalizability. this is dependent on data set
@@ -29,9 +31,22 @@ impl Embedder{
                 &_ => {}
             }
         }
+
          unsafe { return output * Tensor::from((D_MODEL as f32).sqrt()); }
     }
 
+}
+
+pub(crate) fn init_embedder()-> Embedder{
+     Embedder{weight: utility::xavier_gen(MAX_LEN, D_MODEL).set_requires_grad(true),}
+}
+
+fn mod97_match(input: &str) -> i64{
+    match input {
+        "0" => return 0,
+        "1" => return 1,//to be continued
+        _ => {} }
+    0
 }
 
 fn gen_array(element: i64) -> Tensor{
@@ -64,7 +79,7 @@ pub(crate) fn init_pe() -> PosEncoder{
     posencoder
     //Harvard calls register_buffer, which makes [pe] accessible from anywhere in the model
     //This is part of the nn.module library in pyTorch
-    //Will implement something similar as calls to pe are needed
+    //Will implement something similar if calls to pe are needed
 }
 
 
