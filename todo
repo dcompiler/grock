@@ -1,0 +1,20 @@
+Rust problems: 
+decoder file, line 140: Return value for function references local date
+decoder file, line 163: Mutable Borrows
+decoder file, line 174: temp value dropped while borrowed
+optimizer, line 89: cannot borrow self as mutable more than one time
+
+
+Transformer implementation considerations: 
+training, line 80: verify loss function works correctly, calculate using final paramater in params? or use another method?
+training, line 91: put optimizer in training loop
+optimizer: connect label smoothing fct to optimizer (find spot for init_ls if needed)
+optimizer: verify .backwards() populates gradients correctly
+training: verify training loop working as intended
+[optional] training, line 41: create subsequent mask. Some transformers do not use this, instead opting for casual (random) masking.
+
+
+
+Data set specific: 
+optimizer: create true distribution
+other stages: one hot encoding
